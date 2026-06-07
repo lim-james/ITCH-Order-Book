@@ -1,7 +1,6 @@
 #pragma once
 
 #include "data_source.h"
-#include "market_data/types.h"
 
 #include <string_view>
 #include <fstream>
@@ -9,8 +8,6 @@
 #include <cstddef>
 
 class FileSource {
-
-    using munmap_fn = void(*)();
 
 public:
 
