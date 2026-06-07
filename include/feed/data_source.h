@@ -5,9 +5,7 @@
 #include <cstddef>
 #include <optional>
 
-struct DataFrame {
-    std::span<std::byte> bytes;
-};
+using DataFrame = std::span<const std::byte>;
 
 template<typename T>
 concept data_source = requires (T t) {
