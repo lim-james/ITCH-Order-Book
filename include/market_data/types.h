@@ -6,6 +6,7 @@
 
 namespace nasdaq {
 
+using PacketSize     = BigEndian<std::uint16_t>;
 using MessageType    = char;
 using Stock          = char[8];
 using MPID           = char[4];
