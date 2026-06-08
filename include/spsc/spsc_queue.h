@@ -3,11 +3,11 @@
 #include <new>
 #include <atomic>
 #include <array>
-#include <optional>
+#include <expected>
 #include <concepts>
 #include <span>
-
 #include <memory>
+#include <cassert>
 
 template<std::copyable T, std::size_t Capacity>
 class SPSCProducer;
@@ -37,7 +37,8 @@ public:
 
 private:
 
-    std::array<T, Capacity> buffer_;
+    std::atomic<bool> is_closed_ = false;
+    std::array<T, Capacity> buffer_{};
     
     alignas(std::hardware_destructive_interference_size)
     std::atomic<index_t> write_idx_ = 0;
@@ -79,7 +80,7 @@ public:
         auto write_idx = queue_->write_idx_.load(std::memory_order_relaxed);
         
         if (write_idx - queue_->cached_read_idx_ == Capacity) {
-            queue_->cached_read_idx_ = queue_.read_idx_.load(std::memory_order_acquire);
+            queue_->cached_read_idx_ = queue_->read_idx_.load(std::memory_order_acquire);
             if (write_idx - queue_->cached_read_idx_ == Capacity) 
                 return PushResponse::FAILED_BUFFER_FULL;
         }
@@ -95,17 +96,22 @@ public:
         auto write_idx = queue_->write_idx_.load(std::memory_order_relaxed);
         auto final_write_idx = items.size() - 1 + write_idx;
         
-        if (final_write_idx - queue_->cached_read_idx_ == Capacity) {
+        if (final_write_idx - queue_->cached_read_idx_ >= Capacity) {
             queue_->cached_read_idx_ = queue_->read_idx_.load(std::memory_order_acquire);
-            if (final_write_idx - queue_->cached_read_idx_ == Capacity) 
+            if (final_write_idx - queue_->cached_read_idx_ >= Capacity) 
                 return PushResponse::FAILED_BUFFER_FULL;
         }
 
-        for (std::size_t i = 0; i < items.size(); ++i) 
+        for (std::size_t i = 0; i < items.size(); ++i) {
             queue_->buffer_[(write_idx + i) & MASK] = items[i];
+        }
 
         queue_->write_idx_.store(final_write_idx + 1, std::memory_order_release);
         return PushResponse::SUCCESS;
+    }
+
+    void close() {
+        queue_->is_closed_.store(true, std::memory_order_release);
     }
 
 private:
@@ -114,6 +120,7 @@ private:
 
 };
 
+enum ConsumeFailure { NONE, BUFFER_INSUFFICIENT, BUFFER_CLOSED };
 
 template<std::copyable T, std::size_t Capacity>
 class SPSCConsumer {
@@ -122,6 +129,8 @@ class SPSCConsumer {
     static constexpr auto MASK = Capacity - 1;
 
 public:
+
+    using pop_result_t = std::expected<T, ConsumeFailure>;
 
     explicit SPSCConsumer(shared_queue_t queue): queue_(queue) {}
     ~SPSCConsumer() = default;
@@ -132,12 +141,18 @@ public:
     SPSCConsumer(SPSCConsumer&&) = default;
     SPSCConsumer& operator=(SPSCConsumer&&) = default;
 
-    std::optional<T> try_pop() {
+    pop_result_t try_pop() {
         auto read_idx = queue_->read_idx_.load(std::memory_order_relaxed);
         
         if (read_idx == queue_->cached_write_idx_) {
-            queue_->cached_write_idx_ = queue_.write_idx_.load(std::memory_order_acquire);
-            if (read_idx == queue_->cached_write_idx_) return std::nullopt;
+            queue_->cached_write_idx_ = queue_->write_idx_.load(std::memory_order_acquire);
+            if (read_idx == queue_->cached_write_idx_) {
+                return std::unexpected{
+                    queue_->is_closed_.load(std::memory_order_acquire)
+                    ? ConsumeFailure::BUFFER_CLOSED
+                    : ConsumeFailure::BUFFER_INSUFFICIENT
+                };
+            }
         }
 
         T item = queue_->buffer_[read_idx & MASK];
@@ -145,22 +160,26 @@ public:
         return item;
     }
 
-    bool try_pop_many(std::size_t count, std::span<T> read_ptr) {
+    ConsumeFailure try_pop_many(std::size_t count, std::span<T> read_ptr) {
         assert(read_ptr.size() >= count);
 
         auto read_idx = queue_->read_idx_.load(std::memory_order_relaxed);
         auto final_read_idx = read_idx + count - 1;
         
-        if (final_read_idx == queue_->cached_write_idx_) {
-            queue_->cached_write_idx_ = queue_.write_idx_.load(std::memory_order_acquire);
-            if (final_read_idx == queue_->cached_write_idx_) return false;
+        if (final_read_idx >= queue_->cached_write_idx_) {
+            queue_->cached_write_idx_ = queue_->write_idx_.load(std::memory_order_acquire);
+            if (final_read_idx >= queue_->cached_write_idx_) {
+                return queue_->is_closed_.load(std::memory_order_acquire)
+                    ? ConsumeFailure::BUFFER_CLOSED
+                    : ConsumeFailure::BUFFER_INSUFFICIENT;
+            }
         }
 
         for (std::size_t i = 0; i < count; ++i)
             read_ptr[i] = queue_->buffer_[(read_idx + i) & MASK];
 
         queue_->read_idx_.store(final_read_idx + 1, std::memory_order_release);
-        return true;
+        return ConsumeFailure::NONE;
     }
 
 private:
