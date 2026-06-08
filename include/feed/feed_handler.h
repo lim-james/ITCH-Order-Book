@@ -17,12 +17,15 @@ public:
         : source_{source}
         , producer_queue_{std::forward<producer_t&&>(producer)} {}
 
-    ~FeedHandler() noexcept = default;
+    ~FeedHandler() noexcept {
+        producer_queue_.close();
+    }
 
     bool poll() {
         static auto publish_queue = [this](DataFrame next_frame) -> ReadResult {
             while (producer_queue_.try_push_many(next_frame) != PushResponse::SUCCESS);
-            std::println("Read {} bytes", next_frame.size());
+            auto message_type = static_cast<char>(next_frame[0]);
+            std::println("[FEED HANDLER] Read & pushed {} bytes | Message Type '{}'", next_frame.size(), message_type);
             return next_frame;
         };
 
