@@ -164,11 +164,10 @@ public:
         assert(read_ptr.size() >= count);
 
         auto read_idx = queue_->read_idx_.load(std::memory_order_relaxed);
-        auto final_read_idx = read_idx + count - 1;
         
-        if (final_read_idx >= queue_->cached_write_idx_) {
+        if (queue_->cached_write_idx_ - read_idx < count) {
             queue_->cached_write_idx_ = queue_->write_idx_.load(std::memory_order_acquire);
-            if (final_read_idx >= queue_->cached_write_idx_) {
+            if (queue_->cached_write_idx_ - read_idx < count) {
                 return queue_->is_closed_.load(std::memory_order_acquire)
                     ? ConsumeFailure::BUFFER_CLOSED
                     : ConsumeFailure::BUFFER_INSUFFICIENT;
