@@ -30,8 +30,7 @@ target_include_directories(itch_includes INTERFACE ${CMAKE_SOURCE_DIR}/include)
 
 add_library(itch_core
     src/feed/file_source.cpp
-    # src/market_data/MarketDataHandler.cpp
-    # src/book/OrderBook.cpp
+    src/book/order_book.cpp
 )
 target_link_libraries(itch_core PUBLIC itch_includes)
 

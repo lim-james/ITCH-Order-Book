@@ -22,7 +22,8 @@ int main(int argsc, char** argsv) {
     });
 
     auto book_worker = std::jthread([&] {
-        MarketDataHandler market_data_handler{std::move(spsc.consumer)};
+        OrderBook order_book{};
+        MarketDataHandler market_data_handler{std::move(spsc.consumer), std::move(order_book)};
         while (market_data_handler.poll());
     });
 }

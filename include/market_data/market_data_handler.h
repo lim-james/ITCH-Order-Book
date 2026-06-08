@@ -1,18 +1,20 @@
 #pragma once
 
 #include "messages.h"
-#include "spsc/spsc_queue.h"
 #include "stse/stse.hpp"
+#include "spsc/spsc_queue.h"
+#include "book/order_book.h" 
 
 template<std::size_t N>
 class MarketDataHandler {
     
-    using consumer_t   = SPSCConsumer<std::byte, N>;
+    using consumer_t = SPSCConsumer<std::byte, N>;
 
 public:
 
-    MarketDataHandler(consumer_t&& consumer)
-        : consumer_queue_{std::forward<consumer_t&&>(consumer)} {}
+    MarketDataHandler(consumer_t&& consumer, OrderBook&& book)
+        : consumer_queue_{std::forward<consumer_t&&>(consumer)} 
+        , order_book_{std::forward<OrderBook&&>(book)} {}
     
     ~MarketDataHandler() noexcept = default;
 
@@ -44,6 +46,7 @@ public:
 private:
 
     consumer_t consumer_queue_;
+    OrderBook order_book_;
 
     template<typename message_t>
     message_t parse_message() {
@@ -57,13 +60,13 @@ private:
 
     void parse_and_dispatch_message(nasdaq::MessageType message_type) {
         switch (message_type) {
-            case 'A': parse_message<nasdaq::AddOrderMessage>(); break;
-            case 'F': parse_message<nasdaq::AddOrderMPIDMessage>(); break;
-            case 'E': parse_message<nasdaq::OrderExecutedMessage>(); break;
-            case 'C': parse_message<nasdaq::OrderExecutedWithPriceMessage>(); break;
-            case 'X': parse_message<nasdaq::OrderCancelMessage>(); break;
-            case 'D': parse_message<nasdaq::OrderDeleteMessage>(); break;
-            case 'U': parse_message<nasdaq::OrderReplaceMessage>(); break;
+            case 'A': order_book_.add_order(parse_message<nasdaq::AddOrderMessage>()); break;
+            case 'F': order_book_.add_order_mpid(parse_message<nasdaq::AddOrderMPIDMessage>()); break;
+            case 'E': order_book_.execute_order(parse_message<nasdaq::OrderExecutedMessage>()); break;
+            case 'C': order_book_.execute_order_with_price(parse_message<nasdaq::OrderExecutedWithPriceMessage>()); break;
+            case 'X': order_book_.cancel_order(parse_message<nasdaq::OrderCancelMessage>()); break;
+            case 'D': order_book_.delete_order(parse_message<nasdaq::OrderDeleteMessage>()); break;
+            case 'U': order_book_.replace_order(parse_message<nasdaq::OrderReplaceMessage>()); break;
         }
     }
 
