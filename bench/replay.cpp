@@ -16,9 +16,5 @@ int main(int argsc, char** argsv) {
     FileSource  file_source{argsv[1]};
     FeedHandler feed_handler{file_source, std::move(spsc.producer)};
 
-    feed_handler.poll();
-    feed_handler.poll();
-    feed_handler.poll();
-    feed_handler.poll();
-    feed_handler.poll();
+    while (feed_handler.poll());
 }

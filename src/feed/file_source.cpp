@@ -26,14 +26,15 @@ FileSource::~FileSource() {
      munmap(map_, size_);
 }
 
-std::optional<DataFrame> FileSource::next() {
-    if (ptr_.size() < sizeof(nasdaq::PacketSize)) return std::nullopt;
+ReadResult FileSource::next() {
+    if (ptr_.empty()) return std::unexpected{DataReadFailure::StreamClosed};
+    if (ptr_.size() < sizeof(nasdaq::PacketSize)) return std::unexpected{DataReadFailure::InvalidFormat};
 
-    nasdaq::PacketSize packet_size;
+    nasdaq::PacketSize packet_size{};
     std::memcpy(&packet_size, ptr_.data(), sizeof(nasdaq::PacketSize));
     ptr_ = ptr_.subspan(sizeof(nasdaq::PacketSize));
 
-    if (ptr_.size() < packet_size) return std::nullopt;
+    if (ptr_.size() < packet_size) return std::unexpected{DataReadFailure::InvalidFormat};
 
     std::span data_frame{ptr_.data(), packet_size};
     ptr_ = ptr_.subspan(packet_size);

@@ -17,15 +17,22 @@ public:
         : source_{source}
         , producer_queue_{std::forward<producer_t&&>(producer)} {}
 
-    void poll() {
-        if (auto next_frame = source_.next()) {
-            auto c = *reinterpret_cast<const char*>(next_frame->data());
-            std::println("Message Type: {}", c);
-            while (producer_queue_.try_push_many(*next_frame) != PushResponse::SUCCESS) {
-                // std::println("Failed to push {} bytes", next_frame->size());
-            }
-            std::println("Read {} bytes", next_frame->size());
-        }
+    ~FeedHandler() = default;
+
+    bool poll() {
+        static auto publish_queue = [this](DataFrame next_frame) -> ReadResult {
+            while (producer_queue_.try_push_many(next_frame) != PushResponse::SUCCESS);
+            std::println("Read {} bytes", next_frame.size());
+            return next_frame;
+        };
+
+        static constexpr auto check_stream_closed = [](DataReadFailure failure) -> ReadResult {
+            return failure == DataReadFailure::StreamClosed ? std::unexpected{failure} : ReadResult{};
+        };
+
+        auto next_frame = source_.next();
+        auto pipeline = next_frame.and_then(publish_queue).or_else(check_stream_closed);
+        return pipeline.has_value(); 
     }
 
 private:

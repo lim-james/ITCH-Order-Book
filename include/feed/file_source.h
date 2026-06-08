@@ -13,7 +13,7 @@ public:
 
     explicit FileSource(std::string_view filepath);
     ~FileSource();
-    std::optional<DataFrame> next();
+    ReadResult next();
 
 private:
 
