@@ -1,9 +1,11 @@
+#include "spsc/spsc_factory.h"
 #include "feed/file_source.h"
 #include "feed/feed_handler.h"
-#include "spsc/spsc_factory.h"
+#include "market_data/market_data_handler.h"
 
 #include <print>
 #include <utility>
+#include <thread>
 
 int main(int argsc, char** argsv) {
     if (argsc <= 1) {
@@ -12,9 +14,15 @@ int main(int argsc, char** argsv) {
     }
 
     auto spsc = make_spsc<std::byte, 1024>();
-    
-    FileSource  file_source{argsv[1]};
-    FeedHandler feed_handler{file_source, std::move(spsc.producer)};
 
-    while (feed_handler.poll());
+    auto feed_worker = std::jthread([&] {
+        FileSource  file_source{argsv[1]};
+        FeedHandler feed_handler{file_source, std::move(spsc.producer)};
+        while (feed_handler.poll());
+    });
+
+    auto book_worker = std::jthread([&] {
+        MarketDataHandler market_data_handler{std::move(spsc.consumer)};
+        while (market_data_handler.poll());
+    });
 }
