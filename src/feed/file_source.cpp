@@ -30,15 +30,15 @@ ReadResult FileSource::next() {
     if (ptr_.empty()) return std::unexpected{DataReadFailure::STREAM_CLOSED};
     if (ptr_.size() < sizeof(nasdaq::PacketSize)) return std::unexpected{DataReadFailure::INVALID_FORMAT};
 
-    nasdaq::PacketSize packet_size{};
-    std::memcpy(&packet_size, ptr_.data(), sizeof(nasdaq::PacketSize));
+    nasdaq::PacketSize packet_body_size{};
+    std::memcpy(&packet_body_size, ptr_.data(), sizeof(nasdaq::PacketSize));
 
-    ptr_ = ptr_.subspan(sizeof(nasdaq::PacketSize));
+    const std::size_t total_packet_size = sizeof(nasdaq::PacketSize) + packet_body_size;
 
-    if (ptr_.size() < packet_size) return std::unexpected{DataReadFailure::INVALID_FORMAT};
+    if (ptr_.size() < total_packet_size) return std::unexpected{DataReadFailure::INVALID_FORMAT};
 
-    std::span data_frame{ptr_.data(), packet_size};
-    ptr_ = ptr_.subspan(packet_size);
+    std::span data_frame{ptr_.data(), total_packet_size};
+    ptr_ = ptr_.subspan(total_packet_size);
 
     return data_frame;
 }

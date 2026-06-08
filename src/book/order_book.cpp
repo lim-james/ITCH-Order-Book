@@ -4,6 +4,7 @@
 
 void OrderBook::add_order(const nasdaq::AddOrderMessage&) {
     std::println("nasdaq::AddOrderMessage");
+      
 }
 
 void OrderBook::add_order_mpid(const nasdaq::AddOrderMPIDMessage&) {

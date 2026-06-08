@@ -177,7 +177,23 @@ public:
         for (std::size_t i = 0; i < count; ++i)
             read_ptr[i] = queue_->buffer_[(read_idx + i) & MASK];
 
-        queue_->read_idx_.store(final_read_idx + 1, std::memory_order_release);
+        queue_->read_idx_.store(read_idx + count, std::memory_order_release);
+        return ConsumeFailure::NONE;
+    }
+
+    ConsumeFailure try_skip_many(std::size_t count) {
+        auto read_idx = queue_->read_idx_.load(std::memory_order_relaxed);
+        
+        if (queue_->cached_write_idx_ - read_idx < count) {
+            queue_->cached_write_idx_ = queue_->write_idx_.load(std::memory_order_acquire);
+            if (queue_->cached_write_idx_ - read_idx < count) {
+                return queue_->is_closed_.load(std::memory_order_acquire)
+                    ? ConsumeFailure::BUFFER_CLOSED
+                    : ConsumeFailure::BUFFER_INSUFFICIENT;
+            }
+        }
+
+        queue_->read_idx_.store(read_idx + count, std::memory_order_release);
         return ConsumeFailure::NONE;
     }
 

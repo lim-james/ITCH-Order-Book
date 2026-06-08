@@ -4,6 +4,11 @@
 
 namespace nasdaq {
 
+struct MessagaHeader {
+    PacketSize  packet_size;
+    MessageType message_type;
+};
+
 struct AddOrderMessage {
     static constexpr MessageType MESSAGE_TYPE = 'A';
     LocateCode   stock_locate;

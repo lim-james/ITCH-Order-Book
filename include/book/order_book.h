@@ -2,6 +2,8 @@
 
 #include "market_data/messages.h"
 
+#include <map>
+
 class OrderBook {
 
 public:
@@ -24,5 +26,15 @@ public:
     void replace_order(const nasdaq::OrderReplaceMessage&);
 
 private:
+
+    struct Entry {
+
+        auto operator<=>(const Entry&) const = default;
+    };
+
+    using order_collection_t = std::map<nasdaq::Price4, nasdaq::NumShares8>;
+
+    order_collection_t bids_;
+    order_collection_t asks_;
 
 };
