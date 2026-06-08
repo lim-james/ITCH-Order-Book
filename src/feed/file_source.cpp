@@ -2,6 +2,7 @@
 
 #include "market_data/types.h"
 
+#include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -28,7 +29,8 @@ FileSource::~FileSource() {
 std::optional<DataFrame> FileSource::next() {
     if (ptr_.size() < sizeof(nasdaq::PacketSize)) return std::nullopt;
 
-    const auto packet_size = *reinterpret_cast<const nasdaq::PacketSize*>(ptr_.data());
+    nasdaq::PacketSize packet_size;
+    std::memcpy(&packet_size, ptr_.data(), sizeof(nasdaq::PacketSize));
     ptr_ = ptr_.subspan(sizeof(nasdaq::PacketSize));
 
     if (ptr_.size() < packet_size) return std::nullopt;
