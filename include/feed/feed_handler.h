@@ -17,7 +17,7 @@ public:
         : source_{source}
         , producer_queue_{std::forward<producer_t&&>(producer)} {}
 
-    ~FeedHandler() = default;
+    ~FeedHandler() noexcept = default;
 
     bool poll() {
         static auto publish_queue = [this](DataFrame next_frame) -> ReadResult {
@@ -27,7 +27,7 @@ public:
         };
 
         static constexpr auto check_stream_closed = [](DataReadFailure failure) -> ReadResult {
-            return failure == DataReadFailure::StreamClosed ? std::unexpected{failure} : ReadResult{};
+            return failure == DataReadFailure::STREAM_CLOSED ? std::unexpected{failure} : ReadResult{};
         };
 
         auto next_frame = source_.next();

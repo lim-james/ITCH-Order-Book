@@ -8,8 +8,8 @@
 using DataFrame = std::span<const std::byte>;
 
 enum class DataReadFailure {
-    InvalidFormat,
-    StreamClosed
+    INVALID_FORMAT,
+    STREAM_CLOSED
 };
 
 using ReadResult = std::expected<DataFrame, DataReadFailure>;
