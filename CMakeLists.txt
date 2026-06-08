@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(itch LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -9,10 +8,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++26")
+
 add_compile_options(
-    -Wall
-    -Wextra
-    -Wpedantic
+    -Wall -Wextra -Wpedantic
+    -Wuninitialized -Wunused -Wconversion
+    -freflection -fcontracts
+    -fcontract-evaluation-semantic=ignore
     $<$<CONFIG:Release>:-O3>
     $<$<CONFIG:Release>:-march=native>
     $<$<CONFIG:Debug>:-g>
