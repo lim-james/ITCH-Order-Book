@@ -6,10 +6,13 @@
 
 namespace nasdaq {
 
+template<std::size_t N>
+using short_string   = std::array<char, N>;
+
 using PacketSize     = BigEndian<std::uint16_t>;
 using MessageType    = char;
-using Stock          = char[8];
-using MPID           = char[4];
+using Stock          = short_string<8>;
+using MPID           = short_string<4>;
 using LocateCode     = BigEndian<std::uint16_t>;
 using TrackingNum    = BigEndian<std::uint16_t>;
 using ReferenceNum   = BigEndian<std::uint64_t>;
@@ -22,7 +25,7 @@ using Int8           = BigEndian<std::uint64_t>;
 using ReleaseTime    = BigEndian<std::uint32_t>;
 
 struct [[gnu::packed]] Timestamp {
-    std::uint8_t raw_timestamp[6];
+    std::array<std::uint8_t, 6> raw_timestamp;
 
     operator std::uint64_t() const noexcept {
         return (static_cast<std::uint64_t>(raw_timestamp[0]) << 40) 
