@@ -3,14 +3,15 @@
 #include "market_data/messages.h"
 
 #include <map>
+#include <utility>
 
 class OrderBook {
 
-    using side_t   = char;
+public:
+
+    enum class side_t: char { BUY, SELL };
     using price_t  = std::uint32_t;
     using shares_t = std::uint64_t;
-
-public:
 
     OrderBook() = default;
     ~OrderBook() noexcept = default;
@@ -38,8 +39,8 @@ private:
 
     inline order_collection_t& get_order_side(side_t side) {
         switch (side) {
-            case 'B': return buy_;
-            case 'S': return sell_;
+            case side_t::BUY:  return buy_;
+            case side_t::SELL: return sell_;
             default:  std::unreachable();
         }
     }
