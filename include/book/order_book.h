@@ -6,6 +6,10 @@
 
 class OrderBook {
 
+    using side_t   = char;
+    using price_t  = std::uint32_t;
+    using shares_t = std::uint64_t;
+
 public:
 
     OrderBook() = default;
@@ -17,24 +21,30 @@ public:
     OrderBook(OrderBook&&) = default;
     OrderBook& operator=(OrderBook&&) = default;
 
-    void add_order(const nasdaq::AddOrderMessage&);
-    void add_order_mpid(const nasdaq::AddOrderMPIDMessage&);
-    void execute_order(const nasdaq::OrderExecutedMessage&);
-    void execute_order_with_price(const nasdaq::OrderExecutedWithPriceMessage&);
-    void cancel_order(const nasdaq::OrderCancelMessage&);
-    void delete_order(const nasdaq::OrderDeleteMessage&);
-    void replace_order(const nasdaq::OrderReplaceMessage&);
+    void add_order(side_t side, price_t price, shares_t shares);
+    void execute_order(side_t side, price_t price, shares_t executed_shares);
+    void cancel_order(side_t side, price_t price, shares_t cancelled_shares);
+    void delete_order(side_t side, price_t price, shares_t deleted_shares);
+    void replace_order(side_t side,
+                       price_t old_price, shares_t old_shares,
+                       price_t new_price, shares_t new_shares);
 
 private:
 
-    struct Entry {
+    using order_collection_t = std::map<price_t, nasdaq::NumShares8>;
 
-        auto operator<=>(const Entry&) const = default;
-    };
+    order_collection_t buy_;
+    order_collection_t sell_;
 
-    using order_collection_t = std::map<nasdaq::Price4, nasdaq::NumShares8>;
+    inline order_collection_t& get_order_side(side_t side) {
+        switch (side) {
+            case 'B': return buy_;
+            case 'S': return sell_;
+            default:  std::unreachable();
+        }
+    }
 
-    order_collection_t bids_;
-    order_collection_t asks_;
+    void remove_shares(order_collection_t& collection, 
+                       price_t price, shares_t shares);
 
 };

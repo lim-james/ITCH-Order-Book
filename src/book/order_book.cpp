@@ -2,32 +2,33 @@
 
 #include <print>
 
-void OrderBook::add_order(const nasdaq::AddOrderMessage&) {
-    std::println("nasdaq::AddOrderMessage");
-      
+void OrderBook::add_order(side_t side, price_t price, shares_t shares) {
+    get_order_side(side)[price] += shares;
 }
 
-void OrderBook::add_order_mpid(const nasdaq::AddOrderMPIDMessage&) {
-    std::println("nasdaq::AddOrderMPIDMessage");
+void OrderBook::execute_order(side_t side, price_t price, shares_t executed_shares) {
+    remove_shares(get_order_side(side), price, executed_shares);
 }
 
-void OrderBook::execute_order(const nasdaq::OrderExecutedMessage&) {
-    std::println("nasdaq::OrderExecutedMessage");
+void OrderBook::cancel_order(side_t side, price_t price, shares_t cancelled_shares) {
+    remove_shares(get_order_side(side), price, cancelled_shares);
 }
 
-void OrderBook::execute_order_with_price(const nasdaq::OrderExecutedWithPriceMessage&) {
-    std::println("nasdaq::OrderExecutedWithPriceMessage");
+void OrderBook::delete_order(side_t side, price_t price, shares_t deleted_shares) {
+    remove_shares(get_order_side(side), price, deleted_shares);
 }
 
-void OrderBook::cancel_order(const nasdaq::OrderCancelMessage&) {
-    std::println("nasdaq::OrderCancelMessage");
+void OrderBook::replace_order(side_t side, 
+                              price_t old_price, shares_t old_shares,
+                              price_t new_price, shares_t new_shares) {
+    auto& order_collection = get_order_side(side);
+    remove_shares(order_collection, old_price, old_shares);
+    order_collection[new_price] += new_shares;
 }
 
-void OrderBook::delete_order(const nasdaq::OrderDeleteMessage&) {
-    std::println("nasdaq::OrderDeleteMessage");
+void OrderBook::remove_shares(order_collection_t& collection, 
+                              price_t price, shares_t shares) {
+    auto entry = collection.find(price);
+    entry->second -= shares;
+    if (entry->second == 0) collection.erase(entry); 
 }
-
-void OrderBook::replace_order(const nasdaq::OrderReplaceMessage&) {
-    std::println("nasdaq::OrderReplaceMessage");
-}
-
