@@ -12,6 +12,7 @@ using short_string   = std::array<char, N>;
 
 using PacketSize     = BigEndian<std::uint16_t>;
 using MessageType    = char;
+using TradeSide      = char;
 using Stock          = short_string<8>;
 using MPID           = short_string<4>;
 using LocateCode     = BigEndian<std::uint16_t>;

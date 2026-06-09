@@ -15,7 +15,7 @@ struct AddOrderMessage {
     TrackingNum  tracking_number;
     Timestamp    timestamp;
     ReferenceNum order_reference_number;
-    char         buy_sell_indicator; // 'B' = Buy, 'S' = Sell
+    TradeSide    buy_sell_indicator; // 'B' = Buy, 'S' = Sell
     NumShares4   shares;
     Stock        stock;
     Price4       price;
@@ -27,7 +27,7 @@ struct AddOrderMPIDMessage {
     TrackingNum  tracking_number;
     Timestamp    timestamp;
     ReferenceNum order_reference_number;
-    char         buy_sell_indicator; // 'B' = Buy, 'S' = Sell
+    TradeSide    buy_sell_indicator; // 'B' = Buy, 'S' = Sell
     NumShares4   shares;
     Stock        stock;
     Price4       price;
