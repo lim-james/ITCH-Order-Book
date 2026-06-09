@@ -102,9 +102,9 @@ private:
         auto& [side, price, shares] = order_entry->second;
 
         shares -= message.executed_shares;
-        if (shares == 0) order_records_.erase(order_entry);
-
         order_book_.execute_order(side, price, message.executed_shares);
+
+        if (shares == 0) order_records_.erase(order_entry);
     }
 
     void execute_order_with_price(const nasdaq::OrderExecutedWithPriceMessage& message) {
@@ -112,9 +112,9 @@ private:
         auto& [side, price, shares] = order_entry->second;
 
         shares -= message.executed_shares;
-        if (shares == 0) order_records_.erase(order_entry);
-
         order_book_.execute_order(side, price, message.executed_shares);
+
+        if (shares == 0) order_records_.erase(order_entry);
     }
 
     void cancel_order(const nasdaq::OrderCancelMessage& message) {
@@ -129,14 +129,14 @@ private:
 
     void delete_order(const nasdaq::OrderDeleteMessage& message) {
         auto order_entry = order_records_.find(message.order_reference_number);
-        auto& [side, price, shares] = order_entry->second;
+        auto [side, price, shares] = order_entry->second;
         order_records_.erase(order_entry);
         order_book_.cancel_order(side, price, shares);
     }
 
     void replace_order(const nasdaq::OrderReplaceMessage& message) {
         auto original_order_entry = order_records_.find(message.original_order_reference_number);
-        auto& [side, price, shares] = original_order_entry->second;
+        auto [side, price, shares] = original_order_entry->second;
 
         order_records_.erase(original_order_entry);
 
