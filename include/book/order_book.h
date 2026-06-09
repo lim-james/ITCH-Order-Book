@@ -32,7 +32,7 @@ public:
 
 private:
 
-    using order_collection_t = std::map<price_t, nasdaq::NumShares8>;
+    using order_collection_t = std::map<price_t, shares_t>;
 
     order_collection_t buy_;
     order_collection_t sell_;
