@@ -4,7 +4,7 @@
 
 namespace nasdaq {
 
-struct MessagaHeader {
+struct MessageHeader {
     PacketSize  packet_size;
     MessageType message_type;
 };

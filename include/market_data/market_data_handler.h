@@ -21,13 +21,13 @@ public:
     ~MarketDataHandler() noexcept = default;
 
     bool poll() {
-        static constexpr std::size_t HEADER_SIZE = stse::serial_size_v<nasdaq::MessagaHeader>;
+        static constexpr std::size_t HEADER_SIZE = stse::serial_size_v<nasdaq::MessageHeader>;
 
         auto header_bytes   = std::array<std::byte, HEADER_SIZE>{};
         auto consume_status = consumer_queue_.try_pop_many(HEADER_SIZE, header_bytes);
 
         if (consume_status == ConsumeFailure::NONE) {
-            auto [message_header] = stse::deserialize<nasdaq::MessagaHeader>(
+            auto [message_header] = stse::deserialize<nasdaq::MessageHeader>(
                 header_bytes
             ).objects;
 
@@ -62,7 +62,7 @@ private:
         consumer_queue_.try_skip_many(packet_size - sizeof(nasdaq::MessageType));
     }
 
-    void parse_and_dispatch_message(nasdaq::MessagaHeader message_header) {
+    void parse_and_dispatch_message(nasdaq::MessageHeader message_header) {
         switch (message_header.message_type) {
             case 'A': order_book_.add_order(parse_message<nasdaq::AddOrderMessage>()); break;
             case 'F': order_book_.add_order_mpid(parse_message<nasdaq::AddOrderMPIDMessage>()); break;
