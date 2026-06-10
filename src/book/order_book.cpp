@@ -3,24 +3,55 @@
 #include <print>
 
 void OrderBook::add_order(side_t side, price_t price, shares_t shares) {
+    std::println(
+        "[ORDER BOOK] Add on {} side | Price: {} | Shares: {}",
+        side == side_t::BUY ? "Buy" : "Sell",
+        price,
+        shares
+    );
     get_order_side(side)[price] += shares;
 }
 
 void OrderBook::execute_order(side_t side, price_t price, shares_t executed_shares) {
+    std::println(
+        "[ORDER BOOK] Execute on {} side | Price: {} | Shares: {}",
+        side == side_t::BUY ? "Buy" : "Sell",
+        price,
+        executed_shares
+    );
     remove_shares(get_order_side(side), price, executed_shares);
 }
 
 void OrderBook::cancel_order(side_t side, price_t price, shares_t cancelled_shares) {
+    std::println(
+        "[ORDER BOOK] Cancel on {} side | Price: {} | Shares: {}",
+        side == side_t::BUY ? "Buy" : "Sell",
+        price,
+        cancelled_shares
+    );
     remove_shares(get_order_side(side), price, cancelled_shares);
 }
 
 void OrderBook::delete_order(side_t side, price_t price, shares_t deleted_shares) {
+    std::println(
+        "[ORDER BOOK] Delete on {} side | Price: {} | Shares: {}",
+        side == side_t::BUY ? "Buy" : "Sell",
+        price,
+        deleted_shares
+    );
     remove_shares(get_order_side(side), price, deleted_shares);
 }
 
 void OrderBook::replace_order(side_t side, 
                               price_t old_price, shares_t old_shares,
                               price_t new_price, shares_t new_shares) {
+
+    std::println(
+        "[ORDER BOOK] Replace on {} side | Price: {} | Shares: {}",
+        side == side_t::BUY ? "Buy" : "Sell",
+        old_price,
+        old_shares
+    );
     auto& order_collection = get_order_side(side);
     remove_shares(order_collection, old_price, old_shares);
     order_collection[new_price] += new_shares;

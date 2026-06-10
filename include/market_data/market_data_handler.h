@@ -6,8 +6,7 @@
 #include "book/order_book.h" 
 
 #include <unordered_map>
-
-#include <print>
+#include <cassert>
 
 template<std::size_t N>
 class MarketDataHandler {
@@ -23,31 +22,37 @@ public:
     ~MarketDataHandler() noexcept = default;
 
     bool poll() {
-        static constexpr std::size_t HEADER_SIZE = stse::serial_size_v<nasdaq::MessageHeader>;
-
-        auto header_bytes   = std::array<std::byte, HEADER_SIZE>{};
-        auto consume_status = consumer_queue_.try_pop_many(HEADER_SIZE, header_bytes);
-
-        if (consume_status == ConsumeFailure::NONE) {
-            auto [message_header] = stse::deserialize<nasdaq::MessageHeader>(
-                header_bytes
-            ).objects;
-
-            std::println(
-                "[MARKET DATA HANDLER] Read {} bytes | Message Type '{}'",
-                message_header.packet_size,
-                message_header.message_type
-            );
-            parse_and_dispatch_message(message_header);
+        auto packet_size_response = try_read_from_queue<nasdaq::PacketSize>();
+        if (!packet_size_response.has_value()) {
+            return packet_size_response.error() != ConsumeFailure::BUFFER_CLOSED;
         }
 
-        return consume_status != ConsumeFailure::BUFFER_CLOSED;
+        auto packet_size = packet_size_response.value();
+        auto packet_body_size = packet_size - stse::serial_size_v<nasdaq::HeaderView>;
+
+        auto header = read_from_queue_unsafe<nasdaq::HeaderView>();
+
+        if (header.message_type != nasdaq::AddOrderMessage::MESSAGE_TYPE &&
+            header.stock_locate != cache_stock_locate_) {
+            consumer_queue_.try_skip_many(packet_body_size);
+            return true;
+        }
+
+        if (!parse_and_dispatch_message(header.message_type, header.stock_locate)) {
+            consumer_queue_.try_skip_many(packet_body_size);
+        }   
+
+        return true; 
     }
 
 private:
 
+    static constexpr nasdaq::Stock TARGET_STOCK{'T', 'S', 'L', 'A', ' ', ' ', ' ', ' '};
+
     consumer_t consumer_queue_;
     OrderBook order_book_;
+
+    std::uint16_t cache_stock_locate_;
 
     using reference_num_t = std::uint64_t;
     struct OrderRecord {
@@ -58,22 +63,39 @@ private:
 
     std::unordered_map<reference_num_t, OrderRecord> order_records_;
 
-    template<typename message_t>
-    message_t parse_message() {
-        static constexpr std::size_t PACKET_SIZE = stse::serial_size_v<message_t>;
-        std::array<std::byte, PACKET_SIZE> buffer{};
-        consumer_queue_.try_pop_many(PACKET_SIZE, buffer);
-        auto [message] = stse::deserialize<message_t>(buffer).objects;
-        std::println("[MARKET DATA HANDLER] STSE deserializing {} bytes", PACKET_SIZE);
-        return message;
+    template<typename T>
+    std::expected<T, ConsumeFailure> try_read_from_queue() {
+        static constexpr std::size_t T_SIZE = stse::serial_size_v<T>;
+        static std::array<std::byte, T_SIZE> buffer{};
+        auto consume_failure = consumer_queue_.try_pop_many(T_SIZE, buffer); 
+        if (consume_failure != ConsumeFailure::NONE) return std::unexpected{consume_failure};
+
+        T object; 
+        stse::deserialize_advance(buffer, object);
+        return object;
     }
 
-    void skip_message(std::size_t packet_size) {
-        std::println("[MARKET DATA HANDLER] Skipping {} bytes", packet_size);
-        consumer_queue_.try_skip_many(packet_size - sizeof(nasdaq::MessageType));
+    template<typename T>
+    T read_from_queue_unsafe() {
+        static constexpr std::size_t T_SIZE = stse::serial_size_v<T>;
+        static std::array<std::byte, T_SIZE> buffer{};
+        [[maybe_unused]] auto consume_failure = consumer_queue_.try_pop_many(T_SIZE, buffer); 
+
+        assert(consume_failure == ConsumeFailure::NONE);
+
+        T object; 
+        stse::deserialize_advance(buffer, object);
+        return object;
     }
 
-    void add_order(const nasdaq::AddOrderMessage& message) {
+    template<typename AddOrderMessage>
+    void add_order(
+        std::uint16_t stock_locate,
+        const AddOrderMessage& message
+    ) {
+        if (message.stock != TARGET_STOCK) return;
+        cache_stock_locate_ = stock_locate;
+
         using side_t = typename OrderBook::side_t;
         const auto side = message.buy_sell_indicator == 'B' ? side_t::BUY : side_t::SELL;
 
@@ -85,29 +107,8 @@ private:
         order_book_.add_order(side, message.price, message.shares);
     }
 
-    void add_order_mpid(const nasdaq::AddOrderMPIDMessage& message) {
-        using side_t = typename OrderBook::side_t;
-        const auto side = message.buy_sell_indicator == 'B' ? side_t::BUY : side_t::SELL;
-
-        order_records_[message.order_reference_number] = {
-            .side   = side,
-            .price  = message.price, 
-            .shares = message.shares
-        };
-        order_book_.add_order(side, message.price, message.shares);
-    }
-
-    void execute_order(const nasdaq::OrderExecutedMessage& message) {
-        auto order_entry = order_records_.find(message.order_reference_number);
-        auto& [side, price, shares] = order_entry->second;
-
-        shares -= message.executed_shares;
-        order_book_.execute_order(side, price, message.executed_shares);
-
-        if (shares == 0) order_records_.erase(order_entry);
-    }
-
-    void execute_order_with_price(const nasdaq::OrderExecutedWithPriceMessage& message) {
+    template<typename OrderExecuteMessage>
+    void execute_order(const OrderExecuteMessage& message) {
         auto order_entry = order_records_.find(message.order_reference_number);
         auto& [side, price, shares] = order_entry->second;
 
@@ -149,17 +150,21 @@ private:
         order_book_.replace_order(side, price, shares, message.price, message.shares);
     }
 
-    void parse_and_dispatch_message(const nasdaq::MessageHeader& message_header) {
-        switch (message_header.message_type) {
-            case 'A': add_order(parse_message<nasdaq::AddOrderMessage>()); break;
-            case 'F': add_order_mpid(parse_message<nasdaq::AddOrderMPIDMessage>()); break;
-            case 'E': execute_order(parse_message<nasdaq::OrderExecutedMessage>()); break;
-            case 'C': execute_order_with_price(parse_message<nasdaq::OrderExecutedWithPriceMessage>()); break;
-            case 'X': cancel_order(parse_message<nasdaq::OrderCancelMessage>()); break;
-            case 'D': delete_order(parse_message<nasdaq::OrderDeleteMessage>()); break;
-            case 'U': replace_order(parse_message<nasdaq::OrderReplaceMessage>()); break;
-            default:  skip_message(message_header.packet_size);
+    bool parse_and_dispatch_message(
+        char message_type, 
+        std::uint16_t stock_locate
+    ) {
+        switch (message_type) {
+            case 'A': add_order(stock_locate, read_from_queue_unsafe<nasdaq::AddOrderMessage>()); break;
+            case 'F': add_order(stock_locate, read_from_queue_unsafe<nasdaq::AddOrderMPIDMessage>()); break;
+            case 'E': execute_order(read_from_queue_unsafe<nasdaq::OrderExecutedMessage>()); break;
+            case 'C': execute_order(read_from_queue_unsafe<nasdaq::OrderExecutedWithPriceMessage>()); break;
+            case 'X': cancel_order(read_from_queue_unsafe<nasdaq::OrderCancelMessage>()); break;
+            case 'D': delete_order(read_from_queue_unsafe<nasdaq::OrderDeleteMessage>()); break;
+            case 'U': replace_order(read_from_queue_unsafe<nasdaq::OrderReplaceMessage>()); break;
+            default:  return false;
         }
+        return true;
     }
 
 };
