@@ -12,6 +12,9 @@ template<std::size_t N>
 class MarketDataHandler {
     
     using consumer_t = SPSCConsumer<std::byte, N>;
+    enum class MessageStatus: std::uint8_t { SIMULATED, SKIPPED };
+
+    static constexpr nasdaq::Stock TARGET_STOCK{'T', 'S', 'L', 'A', ' ', ' ', ' ', ' '};
 
 public:
 
@@ -38,7 +41,7 @@ public:
             return true;
         }
 
-        if (!parse_and_dispatch_message(header.message_type, header.stock_locate)) {
+        if (simulate_message(header.message_type, header.stock_locate) == MessageStatus::SKIPPED) {
             consumer_queue_.try_skip_many(packet_body_size);
         }   
 
@@ -46,8 +49,6 @@ public:
     }
 
 private:
-
-    static constexpr nasdaq::Stock TARGET_STOCK{'T', 'S', 'L', 'A', ' ', ' ', ' ', ' '};
 
     consumer_t consumer_queue_;
     OrderBook order_book_;
@@ -150,7 +151,7 @@ private:
         order_book_.replace_order(side, price, shares, message.price, message.shares);
     }
 
-    bool parse_and_dispatch_message(
+    MessageStatus simulate_message(
         char message_type, 
         std::uint16_t stock_locate
     ) {
@@ -162,9 +163,9 @@ private:
             case 'X': cancel_order(read_from_queue_unsafe<nasdaq::OrderCancelMessage>()); break;
             case 'D': delete_order(read_from_queue_unsafe<nasdaq::OrderDeleteMessage>()); break;
             case 'U': replace_order(read_from_queue_unsafe<nasdaq::OrderReplaceMessage>()); break;
-            default:  return false;
+            default:  return MessageStatus::SKIPPED;
         }
-        return true;
+        return MessageStatus::SIMULATED;
     }
 
 };
