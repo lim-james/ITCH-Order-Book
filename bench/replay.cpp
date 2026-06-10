@@ -13,7 +13,7 @@ int main(int argsc, char** argsv) {
         return 0;
     }
 
-    auto spsc = make_spsc<std::byte, 1024>();
+    auto spsc = make_spsc<std::byte, 1 << 20>();
 
     auto feed_worker = std::jthread([&] {
         FileSource  file_source{argsv[1]};

@@ -2,7 +2,7 @@
 
 #include <new>
 #include <atomic>
-#include <array>
+#include <vector>
 #include <expected>
 #include <concepts>
 #include <span>
@@ -26,7 +26,10 @@ class SPSCQueue {
 
 public:
 
-    SPSCQueue() = default;
+    SPSCQueue() {
+        buffer_.resize(Capacity);
+    }
+
     ~SPSCQueue() = default;
 
     SPSCQueue(const SPSCQueue&) = delete;
@@ -38,7 +41,7 @@ public:
 private:
 
     std::atomic<bool> is_closed_ = false;
-    std::array<T, Capacity> buffer_{};
+    std::vector<T> buffer_;
     
     alignas(std::hardware_destructive_interference_size)
     std::atomic<index_t> write_idx_ = 0;
