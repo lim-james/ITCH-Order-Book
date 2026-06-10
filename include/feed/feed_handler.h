@@ -4,7 +4,6 @@
 #include "spsc/spsc_queue.h"
 
 #include <cstddef>
-#include <print>
 
 template<data_source source_t, std::size_t N>
 class FeedHandler {
@@ -24,8 +23,7 @@ public:
     bool poll() {
         static auto publish_queue = [this](DataFrame next_frame) -> ReadResult {
             while (producer_queue_.try_push_many(next_frame) != PushResponse::SUCCESS);
-            auto message_type = static_cast<char>(next_frame[2]);
-            std::println("[FEED HANDLER] Read & pushed {} bytes | Message Type '{}'", next_frame.size(), message_type);
+            // auto message_type = static_cast<char>(next_frame[2]);
             return next_frame;
         };
 
