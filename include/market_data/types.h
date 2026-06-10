@@ -39,4 +39,13 @@ struct [[gnu::packed]] Timestamp {
     }
 };
 
+template<std::size_t N>
+constexpr Stock make_ticker(const char (&ticker)[N]) {
+    Stock stock{}; stock.fill(' ');
+    for (std::size_t i = 0; i < N - 1; ++i) stock[i] = ticker[i];
+    return stock;
+}
+
+static_assert(make_ticker("TSLA") == Stock{'T', 'S', 'L', 'A', ' ', ' ', ' ', ' '});
+
 }

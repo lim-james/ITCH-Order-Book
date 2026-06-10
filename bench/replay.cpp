@@ -13,7 +13,8 @@ int main(int argsc, char** argsv) {
         return 0;
     }
 
-    auto spsc = make_spsc<std::byte, 1 << 20>();
+    static constexpr std::size_t BUFFER_SIZE = 1 << 20; 
+    auto spsc = make_spsc<std::byte, BUFFER_SIZE>();
 
     auto feed_worker = std::jthread([&] {
         FileSource  file_source{argsv[1]};
@@ -23,7 +24,9 @@ int main(int argsc, char** argsv) {
 
     auto book_worker = std::jthread([&] {
         OrderBook order_book{};
-        MarketDataHandler market_data_handler{std::move(spsc.consumer), std::move(order_book)};
+        MarketDataHandler<nasdaq::make_ticker("TSLA"), BUFFER_SIZE> market_data_handler{
+            std::move(spsc.consumer), std::move(order_book)
+        };
         while (market_data_handler.poll());
     });
 }

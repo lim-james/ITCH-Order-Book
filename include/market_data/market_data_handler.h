@@ -8,13 +8,11 @@
 #include <unordered_map>
 #include <cassert>
 
-template<std::size_t N>
+template<nasdaq::Stock TargetStock, std::size_t N>
 class MarketDataHandler {
     
     using consumer_t = SPSCConsumer<std::byte, N>;
     enum class MessageStatus: std::uint8_t { SIMULATED, SKIPPED };
-
-    static constexpr nasdaq::Stock TARGET_STOCK{'T', 'S', 'L', 'A', ' ', ' ', ' ', ' '};
 
 public:
 
@@ -43,7 +41,7 @@ public:
 
         if (simulate_message(header.message_type, header.stock_locate) == MessageStatus::SKIPPED) {
             consumer_queue_.try_skip_many(packet_body_size);
-        }   
+        }
 
         return true; 
     }
@@ -94,7 +92,7 @@ private:
         std::uint16_t stock_locate,
         const AddOrderMessage& message
     ) {
-        if (message.stock != TARGET_STOCK) return;
+        if (message.stock != TargetStock) return;
         cache_stock_locate_ = stock_locate;
 
         using side_t = typename OrderBook::side_t;
