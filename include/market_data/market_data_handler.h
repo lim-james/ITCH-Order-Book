@@ -2,16 +2,17 @@
 
 #include "messages.h"
 #include "stse/stse.hpp"
-#include "spsc/spsc_queue.h"
+#include "spmc/consumer.h"
 #include "book/order_book.h" 
 
 #include <unordered_map>
 #include <cassert>
 
-template<nasdaq::Stock TargetStock, std::size_t N>
+#include <print>
+
+template<nasdaq::Stock TargetStock, typename consumer_t>
 class MarketDataHandler {
     
-    using consumer_t = SPSCConsumer<std::byte, N>;
     enum class MessageStatus: std::uint8_t { SIMULATED, SKIPPED };
 
 public:
@@ -20,7 +21,9 @@ public:
         : consumer_queue_{std::forward<consumer_t&&>(consumer)} 
         , order_book_{std::forward<OrderBook&&>(book)} {}
     
-    ~MarketDataHandler() noexcept = default;
+    ~MarketDataHandler() noexcept {
+        std::println("{}: {}", TargetStock, message_count_);
+    }
 
     bool poll() {
         auto packet_size_response = try_read_from_queue<nasdaq::PacketSize>();
@@ -41,12 +44,16 @@ public:
 
         if (simulate_message(header.message_type, header.stock_locate) == MessageStatus::SKIPPED) {
             consumer_queue_.try_skip_many(packet_body_size);
+        } else {
+            message_count_++;
         }
 
         return true; 
     }
 
 private:
+
+    std::size_t message_count_{};
 
     consumer_t consumer_queue_;
     OrderBook order_book_;

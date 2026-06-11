@@ -1,6 +1,6 @@
 # itch
 
-A low-latency NASDAQ ITCH 5.0 market data pipeline. Replays binary feed files through a lock-free SPSC queue into per-symbol order books, reconstructing full price-level depth in real time.
+A low-latency NASDAQ ITCH 5.0 market data pipeline. Replays binary feed files through a lock-free SPMC queue into per-symbol order books, reconstructing full price-level depth in real time.
 
 ## Build
 

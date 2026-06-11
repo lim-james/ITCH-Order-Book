@@ -1,14 +1,12 @@
 #pragma once 
 
 #include "data_source.h"
-#include "spsc/spsc_queue.h"
+#include "spmc/producer.h"
 
 #include <cstddef>
 
-template<data_source source_t, std::size_t N>
+template<data_source source_t, typename producer_t>
 class FeedHandler {
-    
-    using producer_t = SPSCProducer<std::byte, N>;
     
 public:
 
@@ -22,8 +20,7 @@ public:
 
     bool poll() {
         static auto publish_queue = [this](DataFrame next_frame) -> ReadResult {
-            while (producer_queue_.try_push_many(next_frame) != PushResponse::SUCCESS);
-            // auto message_type = static_cast<char>(next_frame[2]);
+            while (producer_queue_.try_push_many(next_frame) != ProduceResponse::SUCCESS);
             return next_frame;
         };
 
