@@ -2,6 +2,7 @@
 
 #include "messages.h"
 #include "stse/stse.hpp"
+#include "util/open_address_map.h"
 #include "spmc/consumer.h"
 #include "book/order_book.h" 
 
@@ -67,7 +68,7 @@ private:
         typename OrderBook::shares_t shares; 
     };
 
-    std::unordered_map<reference_num_t, OrderRecord> order_records_;
+    OpenAddressMap<1 << 15, reference_num_t, OrderRecord> order_records_;
 
     template<typename T>
     std::expected<T, ConsumeFailure> try_read_from_queue() {
@@ -116,7 +117,7 @@ private:
     template<typename OrderExecuteMessage>
     void execute_order(const OrderExecuteMessage& message) {
         auto order_entry = order_records_.find(message.order_reference_number);
-        auto& [side, price, shares] = order_entry->second;
+        auto& [side, price, shares] = *order_entry;
 
         shares -= message.executed_shares;
         order_book_.execute_order(side, price, message.executed_shares);
@@ -126,7 +127,7 @@ private:
 
     void cancel_order(const nasdaq::OrderCancelMessage& message) {
         auto order_entry = order_records_.find(message.order_reference_number);
-        auto& [side, price, shares] = order_entry->second;
+        auto& [side, price, shares] = *order_entry;
 
         shares -= message.cancelled_shares;
         if (shares == 0) order_records_.erase(order_entry);
@@ -136,14 +137,14 @@ private:
 
     void delete_order(const nasdaq::OrderDeleteMessage& message) {
         auto order_entry = order_records_.find(message.order_reference_number);
-        auto [side, price, shares] = order_entry->second;
+        auto [side, price, shares] = *order_entry;
         order_records_.erase(order_entry);
         order_book_.cancel_order(side, price, shares);
     }
 
     void replace_order(const nasdaq::OrderReplaceMessage& message) {
         auto original_order_entry = order_records_.find(message.original_order_reference_number);
-        auto [side, price, shares] = original_order_entry->second;
+        auto [side, price, shares] = *original_order_entry;
 
         order_records_.erase(original_order_entry);
 
