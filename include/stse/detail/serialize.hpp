@@ -83,10 +83,12 @@ constexpr std::span<std::byte> serialize_aggregate(
 template<Serializable T>
 constexpr std::span<std::byte> serialize_flat(std::span<std::byte> destination, const T& source) {
     const auto write_bytes = [destination](const std::byte* memory_layout) {
-        std::size_t write_offset = 0;
-        template for (constexpr auto [offset, count]: byte_layout_of<T>) {
-            constexpr_memcpy(destination.data() + write_offset, memory_layout + offset, count);
-            write_offset += count;
+        template for (constexpr auto [struct_offset, wire_offset, count]: byte_layout_of<T>) {
+            constexpr_memcpy(
+                destination.data() + wire_offset,
+                memory_layout + struct_offset,
+                count
+            );
         }
     };
 
