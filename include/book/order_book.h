@@ -1,9 +1,8 @@
 #pragma once
 
-#include "util/open_address_map.h"
 #include "market_data/messages.h"
 
-// #include <map>
+#include <map>
 #include <utility>
 
 class OrderBook {
@@ -33,7 +32,7 @@ public:
 
 private:
 
-    using order_collection_t = OpenAddressMap<16384, price_t, shares_t>;
+    using order_collection_t = std::map<price_t, shares_t>;
 
     order_collection_t buy_;
     order_collection_t sell_;
