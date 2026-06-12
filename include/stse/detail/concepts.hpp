@@ -52,7 +52,8 @@ template<typename T>
         return is_serializable_v<typename T_NORM::value_type>;
     } else if constexpr (Aggregate<T_NORM>) {
         template for (constexpr auto member: serializable_members_of<T_NORM>) {
-            if (!is_serializable_v<typename[:std::meta::type_of(member):]>) {
+            using member_type = typename[:std::meta::type_of(member):];
+            if constexpr (!is_serializable_v<member_type>) {
                 return false;
             }
         }

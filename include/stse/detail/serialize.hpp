@@ -64,12 +64,17 @@ constexpr std::span<std::byte> serialize_static_container(
 
 template<Aggregate T, EndianType Endian>
 constexpr std::span<std::byte> serialize_aggregate(
-    std::span<std::byte> destination,
+    [[maybe_unused]] std::span<std::byte> destination,
     const T& source,
-    Endian endianness
+    [[maybe_unused]] Endian endianness
 ) {
-    template for (constexpr auto member : serializable_members_of<T>) {
-        destination = serialize(destination, source.[:member:], endianness);
+    template for (constexpr auto member : non_skipped_members_of<T>) {
+        if constexpr (has_annotation<ignoreserialization>(member)) {
+            using member_type = typename[:std::meta::type_of(member):];
+            destination = destination.subspan(raw_size<member_type>);
+        } else {
+            destination = serialize(destination, source.[:member:], endianness);
+        }
     }
 
     return destination;

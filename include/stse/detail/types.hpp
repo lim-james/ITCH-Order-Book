@@ -10,6 +10,7 @@ struct LittleEndian { static constexpr std::endian endian = std::endian::little;
 struct NativeEndian { static constexpr std::endian endian = std::endian::native; };
 
 struct skipserialization {};
+struct ignoreserialization {};
 
 template<std::size_t T> struct uint_of_size;
 template<> struct uint_of_size<1> { using type = std::uint8_t; };

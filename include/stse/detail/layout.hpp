@@ -8,21 +8,21 @@
 
 namespace stse::detail {
 
-template<Serializable T>
+template<typename T>
 consteval std::size_t size_of();
 
 template<typename T>
 inline constexpr std::size_t raw_size = size_of<T>();
 
-template<Serializable T>
+template<typename T>
 consteval std::size_t size_of() { 
     if constexpr (Scalar<T>) {
-        return  std::meta::size_of(^^T); 
+        return std::meta::size_of(^^T); 
     } else if constexpr (StaticContainer<T>) {
         return std::tuple_size_v<T> * raw_size<typename T::value_type>;
     } else if constexpr (Aggregate<T>) {
         std::size_t total = 0;
-        template for (constexpr auto member : serializable_members_of<T>) {
+        template for (constexpr auto member : non_skipped_members_of<T>) {
             total += raw_size<typename[:std::meta::type_of(member):]>;
         }
         return total;

@@ -21,6 +21,7 @@ inline constexpr detail::LittleEndian little_endian{};
 inline constexpr detail::NativeEndian native_endian{};
 
 inline constexpr auto skip = detail::skipserialization{};
+inline constexpr auto ignore = detail::ignoreserialization{};
 
 template<typename... Args>
 inline constexpr std::size_t serial_size_v = (detail::raw_size<Args> + ...);

@@ -46,16 +46,32 @@ consteval auto get_all_data_members_of() {
 template<typename T>
 inline constexpr auto all_data_members_of = get_all_data_members_of<T>();
 
+static constexpr auto skip_serialization = std::views::filter([](auto info) { 
+    return !has_annotation<skipserialization>(info); 
+});
+
+static constexpr auto ignore_serialization = std::views::filter([](auto info) { 
+    return !has_annotation<ignoreserialization>(info); 
+});
+
 template<typename T>
 consteval auto get_serializable_members_of() {
-    static constexpr auto skip_serialization = std::views::filter([](auto info) { 
-        return !has_annotation<skipserialization>(info); 
-    });
+    return std::define_static_array(
+        all_data_members_of<T> 
+        | skip_serialization 
+        | ignore_serialization
+    );
+}
 
+template<typename T>
+consteval auto get_non_skipped_members_of() {
     return std::define_static_array(all_data_members_of<T> | skip_serialization);
 }
 
 template<typename T>
 inline constexpr auto serializable_members_of = get_serializable_members_of<T>();
+
+template<typename T>
+inline constexpr auto non_skipped_members_of = get_non_skipped_members_of<T>();
 
 }
