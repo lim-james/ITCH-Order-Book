@@ -28,11 +28,7 @@ void OrderBook::replace_order(side_t side,
 
 void OrderBook::remove_shares(order_collection_t& collection, 
                               price_t price, shares_t shares) {
-    // auto entry = collection.find(price);
-    // entry->second -= shares;
-    // if (entry->second == 0) collection.erase(entry); 
-
-    auto& current_shares = collection[price];
-    current_shares -= shares;
-    if (current_shares == 0) collection.erase(price);
+    auto entry = collection.find(price);
+    entry->second -= shares;
+    if (entry->second == 0) collection.erase(entry); 
 }
