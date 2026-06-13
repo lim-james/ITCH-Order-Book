@@ -1,14 +1,17 @@
 #pragma once 
 
 #include "types.h"
+#include "stse/stse.hpp"
 
 namespace nasdaq {
 
 struct HeaderView {
     MessageType  message_type;
     LocateCode   stock_locate;
-    TrackingNum  tracking_number;
-    Timestamp    timestamp;
+    [[=stse::ignore]] TrackingNum  tracking_number;
+    [[=stse::ignore]] Timestamp    timestamp;
+    // TrackingNum  tracking_number;
+    // Timestamp    timestamp;
 };
 
 struct AddOrderMessage {
@@ -27,23 +30,28 @@ struct AddOrderMPIDMessage {
     NumShares4   shares;
     Stock        stock;
     Price4       price;
-    MPID         attribution; 
+    [[=stse::ignore]] MPID         attribution; 
+    //  MPID         attribution; 
 };
 
 struct OrderExecutedMessage {
     static constexpr MessageType MESSAGE_TYPE = 'E';
     ReferenceNum order_reference_number;
     NumShares4   executed_shares;
-    ReferenceNum match_number;
+    [[=stse::ignore]] ReferenceNum match_number;
+    // ReferenceNum match_number;
 };
 
 struct OrderExecutedWithPriceMessage {
     static constexpr MessageType MESSAGE_TYPE = 'C';
     ReferenceNum order_reference_number;
     NumShares4   executed_shares;
-    ReferenceNum match_number;
-    char         printable;
-    Price4       execution_price;
+    [[=stse::ignore]] ReferenceNum match_number;
+    [[=stse::ignore]] char         printable;
+    [[=stse::ignore]] Price4       execution_price;
+    // ReferenceNum match_number;
+    // char         printable;
+    // Price4       execution_price;
 };
 
 struct OrderCancelMessage {

@@ -27,7 +27,8 @@ public:
     ~MarketDataHandler() noexcept {
         std::println("{}: {}", TargetStock, message_count_);
         std::string_view symbol{TargetStock.data(), TargetStock.size()};
-        latency_recorder_.report(symbol);
+        market_event_latency_.report(symbol);
+        parser_latency_.report(symbol);
     }
 
     bool poll() {
@@ -73,10 +74,12 @@ private:
     };
 
     OpenAddressMap<1 << 16, reference_num_t, OrderRecord> order_records_;
-    LatencyRecorder latency_recorder_;
+    LatencyRecorder market_event_latency_;
+    LatencyRecorder parser_latency_;
 
     template<typename T>
     std::expected<T, ConsumeFailure> try_read_from_queue() {
+        auto _ = parser_latency_.record_scope();
         static constexpr std::size_t T_SIZE = stse::serial_size_v<T>;
         static std::array<std::byte, T_SIZE> buffer{};
         auto consume_failure = consumer_queue_.try_pop_many(T_SIZE, buffer); 
@@ -106,7 +109,7 @@ private:
         const AddOrderMessage& message
     ) {
         if (message.stock != TargetStock) return;
-        auto _ = latency_recorder_.record_scope();
+        auto _ = market_event_latency_.record_scope();
 
         cache_stock_locate_ = stock_locate;
 
@@ -123,7 +126,7 @@ private:
 
     template<typename OrderExecuteMessage>
     void execute_order(const OrderExecuteMessage& message) {
-        auto _ = latency_recorder_.record_scope();
+        auto _ = market_event_latency_.record_scope();
 
         auto order_entry = order_records_.find(message.order_reference_number);
         auto& [side, price, shares] = *order_entry;
@@ -135,7 +138,7 @@ private:
     }
 
     void cancel_order(const nasdaq::OrderCancelMessage& message) {
-        auto _ = latency_recorder_.record_scope();
+        auto _ = market_event_latency_.record_scope();
 
         auto order_entry = order_records_.find(message.order_reference_number);
         auto& [side, price, shares] = *order_entry;
@@ -147,7 +150,7 @@ private:
     }
 
     void delete_order(const nasdaq::OrderDeleteMessage& message) {
-        auto _ = latency_recorder_.record_scope();
+        auto _ = market_event_latency_.record_scope();
 
         auto order_entry = order_records_.find(message.order_reference_number);
         auto [side, price, shares] = *order_entry;
@@ -156,7 +159,7 @@ private:
     }
 
     void replace_order(const nasdaq::OrderReplaceMessage& message) {
-        auto _ = latency_recorder_.record_scope();
+        auto _ = market_event_latency_.record_scope();
 
         auto original_order_entry = order_records_.find(message.original_order_reference_number);
         auto [side, price, shares] = *original_order_entry;
