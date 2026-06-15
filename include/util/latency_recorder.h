@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rdtsc.h"
+#include "quartile_buffer.h"
 
 #include <cstdint>
 #include <memory>
@@ -17,7 +18,7 @@ class LatencyRecorder {
         time_t t0_;
         LatencyRecorder* parent_;
         recorder(LatencyRecorder* parent): t0_{rdtsc()}, parent_{parent} {}
-        ~recorder() { parent_->record(rdtsc() - t0_); }
+        ~recorder() { parent_->buffer_.record(rdtsc() - t0_); }
     };
     
 public:
@@ -27,37 +28,21 @@ public:
     }
 
     void report(std::string_view label, double ghz = tsc_ghz()) const {
-        if (count_ == 0) return;
-        
-        auto count = std::min(MAX_SAMPLES, count_);
+        std::size_t count = buffer_.count();
+        if (count == 0) return;
 
-        std::vector times(buffer_.get(), buffer_.get() + count);
-        std::ranges::sort(times);
-
-        auto p = [&](double quartile) {
-            std::size_t index = static_cast<std::size_t>((count - 1) * quartile);
-            double time_ns = static_cast<double>(times[index]);
-            return time_ns / ghz;
-        };
+        auto [p50, p99, p999] = buffer_.report<0.5, 0.99, 0.999>();
 
         std::println(
             "[{}] n={} p50={:.1f}ns p99={:.1f}ns p99.9={:.1f}ns",
             label, count, 
-            p(0.5), p(0.99), p(0.999)
+            (double)p50 / ghz, (double)p99 / ghz, (double)p999 / ghz
         );
     }
 
 private:
 
     static constexpr std::size_t MAX_SAMPLES = 1 << 24;
-    static_assert((MAX_SAMPLES & (MAX_SAMPLES - 1)) == 0 && "Max Samples must be power of 2");
+    QuartileBuffer<time_t, MAX_SAMPLES> buffer_;
 
-    static constexpr std::size_t MASK = MAX_SAMPLES - 1;
-
-    std::unique_ptr<time_t[]> buffer_ = std::make_unique<time_t[]>(MAX_SAMPLES);
-    std::size_t count_;
-
-    void record(time_t time) noexcept {
-        buffer_[count_++ & MASK] = time;
-    }
 };
