@@ -74,6 +74,7 @@ private:
     };
 
     OpenAddressMap<1 << 16, reference_num_t, OrderRecord> order_records_;
+
     LatencyRecorder market_event_latency_;
     LatencyRecorder parser_latency_;
 
@@ -81,7 +82,8 @@ private:
     std::expected<T, ConsumeFailure> try_read_from_queue() {
         auto _ = parser_latency_.record_scope();
         static constexpr std::size_t T_SIZE = stse::serial_size_v<T>;
-        static std::array<std::byte, T_SIZE> buffer{};
+
+        std::array<std::byte, T_SIZE> buffer{};
         auto consume_failure = consumer_queue_.try_pop_many(T_SIZE, buffer); 
         if (consume_failure != ConsumeFailure::NONE) return std::unexpected{consume_failure};
 
@@ -93,7 +95,8 @@ private:
     template<typename T>
     T read_from_queue_unsafe() {
         static constexpr std::size_t T_SIZE = stse::serial_size_v<T>;
-        static std::array<std::byte, T_SIZE> buffer{};
+
+        std::array<std::byte, T_SIZE> buffer{};
         [[maybe_unused]] auto consume_failure = consumer_queue_.try_pop_many(T_SIZE, buffer); 
 
         assert(consume_failure == ConsumeFailure::NONE);
@@ -161,10 +164,10 @@ private:
     void replace_order(const nasdaq::OrderReplaceMessage& message) {
         auto _ = market_event_latency_.record_scope();
 
-        auto original_order_entry = order_records_.find(message.original_order_reference_number);
-        auto [side, price, shares] = *original_order_entry;
+        auto order_entry = order_records_.find(message.original_order_reference_number);
+        auto [side, price, shares] = *order_entry;
 
-        order_records_.erase(original_order_entry);
+        order_records_.erase(order_entry);
 
         order_records_[message.new_order_reference_number] = {
             .side   = side,
