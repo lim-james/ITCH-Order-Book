@@ -10,8 +10,6 @@ struct HeaderView {
     LocateCode   stock_locate;
     [[=stse::ignore]] TrackingNum  tracking_number;
     [[=stse::ignore]] Timestamp    timestamp;
-    // TrackingNum  tracking_number;
-    // Timestamp    timestamp;
 };
 
 struct AddOrderMessage {
@@ -31,7 +29,6 @@ struct AddOrderMPIDMessage {
     Stock        stock;
     Price4       price;
     [[=stse::ignore]] MPID         attribution; 
-    //  MPID         attribution; 
 };
 
 struct OrderExecutedMessage {
@@ -39,7 +36,6 @@ struct OrderExecutedMessage {
     ReferenceNum order_reference_number;
     NumShares4   executed_shares;
     [[=stse::ignore]] ReferenceNum match_number;
-    // ReferenceNum match_number;
 };
 
 struct OrderExecutedWithPriceMessage {
@@ -49,9 +45,6 @@ struct OrderExecutedWithPriceMessage {
     [[=stse::ignore]] ReferenceNum match_number;
     [[=stse::ignore]] char         printable;
     [[=stse::ignore]] Price4       execution_price;
-    // ReferenceNum match_number;
-    // char         printable;
-    // Price4       execution_price;
 };
 
 struct OrderCancelMessage {
