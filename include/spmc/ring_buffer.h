@@ -4,7 +4,6 @@
 
 #include <new>
 #include <atomic>
-#include <vector>
 #include <inplace_vector>
 #include <expected>
 #include <concepts>
@@ -26,10 +25,7 @@ public:
     using producer_t = SPMCProducer<SPMCRingBuffer>;
     using consumer_t = SPMCConsumer<SPMCRingBuffer>;
 
-    SPMCRingBuffer() {
-        buffer_.resize(Capacity);
-    }
-
+    SPMCRingBuffer() = default;
     ~SPMCRingBuffer() = default;
 
     SPMCRingBuffer(const SPMCRingBuffer&) = delete;
@@ -50,7 +46,7 @@ public:
 private:
 
     std::atomic<bool> is_closed_ = false;
-    std::vector<T> buffer_;
+    std::unique_ptr<T[]> buffer_ = std::make_unique<T[]>(Capacity);
     
     alignas(std::hardware_destructive_interference_size)
     std::atomic<std::size_t> write_idx_ = 0;
