@@ -31,18 +31,14 @@ int main(int argsc, char** argsv) {
     static constexpr std::size_t BUFFER_SIZE = 1 << 20; 
     auto spmc = make_spmc<std::byte, BUFFER_SIZE>(3);
 
-    {
-        auto feed_worker = std::jthread([&] {
-            pin_to_core(1);
-            FileSource  file_source{argsv[1]};
-            FeedHandler feed_handler{file_source, std::move(spmc.producer)};
-            while (feed_handler.poll());
-        });
+    auto feed_worker = std::jthread([&] {
+        pin_to_core(1);
+        FileSource  file_source{argsv[1]};
+        FeedHandler feed_handler{file_source, std::move(spmc.producer)};
+        while (feed_handler.poll());
+    });
 
-        auto tsla_worker = std::jthread(create_worker<nasdaq::make_ticker("TSLA"), 0>(spmc));
-        auto gold_worker = std::jthread(create_worker<nasdaq::make_ticker("GOLD"), 1>(spmc));
-        auto hsbc_worker = std::jthread(create_worker<nasdaq::make_ticker("HSBC"), 2>(spmc));
-    }
-
-    std::println("memcpy count: {}", stse::detail::memcpy_count);
+    auto tsla_worker = std::jthread(create_worker<nasdaq::make_ticker("TSLA"), 0>(spmc));
+    auto gold_worker = std::jthread(create_worker<nasdaq::make_ticker("GOLD"), 1>(spmc));
+    auto hsbc_worker = std::jthread(create_worker<nasdaq::make_ticker("HSBC"), 2>(spmc));
 }
